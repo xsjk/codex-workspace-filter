@@ -18,21 +18,24 @@ const BOOTSTRAP = `${MARK}
 })();
 /* codex-workspace-filter:end */`;
 
+const IDENTIFIER = "[A-Za-z_$][\\w$]*";
+const WORKSPACE_ROOT_HELPER_PATTERN = new RegExp(`function (${IDENTIFIER})\\(\\)\\{let t=${IDENTIFIER}\\.workspace\\.workspaceFolders\\?\\.map\\(r=>r\\.uri\\.fsPath\\)\\?\\?\\[\\];return ${IDENTIFIER}\\(\\)\\?t\\.map\\(${IDENTIFIER}\\):t\\}`);
+
 const PATCHES = [
     {
         name: "mcp-request thread/list bridge",
-        from: 'case"mcp-request":{let{id:n,method:o,params:i}=r.request;this.pendingMcpRequests.set(String(n),e),this.codexMcpConnection.sendRequest(k0,String(n),o,i);break}',
-        to: 'case"mcp-request":{let{id:n,method:o,params:i}=r.request;if(o==="thread/list"&&i&&i.cwd==null){let s=M0();s.length>0&&(i={...i,cwd:s})}this.pendingMcpRequests.set(String(n),e),this.codexMcpConnection.sendRequest(k0,String(n),o,i);break}',
+        pattern: new RegExp(`case"mcp-request":\\{let\\{id:n,method:o,params:i\\}=r\\.request;this\\.pendingMcpRequests\\.set\\(String\\(n\\),e\\),this\\.codexMcpConnection\\.sendRequest\\((${IDENTIFIER}),String\\(n\\),o,i\\);break\\}`),
+        replace: (helperName, _match, transport) => `case"mcp-request":{let{id:n,method:o,params:i}=r.request;if(o==="thread/list"&&i&&i.cwd==null){let s=${helperName}();s.length>0&&(i={...i,cwd:s})}this.pendingMcpRequests.set(String(n),e),this.codexMcpConnection.sendRequest(${transport},String(n),o,i);break}`,
     },
     {
         name: "native ChatSession provider thread/list",
-        from: 'return this.codexAppServer.sendRequest(J7,r,"thread/list",{limit:50,cursor:null,sortKey:"created_at",modelProviders:e?[nb]:null,archived:!1,sourceKinds:im}),n',
-        to: 'let s=M0(),a={limit:50,cursor:null,sortKey:"created_at",modelProviders:e?[nb]:null,archived:!1,sourceKinds:im};return s.length>0&&(a={...a,cwd:s}),this.codexAppServer.sendRequest(J7,r,"thread/list",a),n',
+        pattern: new RegExp(`return this\\.codexAppServer\\.sendRequest\\((${IDENTIFIER}),r,"thread/list",\\{limit:50,cursor:null,sortKey:"created_at",modelProviders:e\\?\\[(${IDENTIFIER})\\]:null,archived:!1,sourceKinds:(${IDENTIFIER})\\}\\),n`),
+        replace: (helperName, _match, transport, provider, sourceKinds) => `let s=${helperName}(),a={limit:50,cursor:null,sortKey:"created_at",modelProviders:e?[${provider}]:null,archived:!1,sourceKinds:${sourceKinds}};return s.length>0&&(a={...a,cwd:s}),this.codexAppServer.sendRequest(${transport},r,"thread/list",a),n`,
     },
     {
         name: "ConversationPreviewLoader thread/list",
-        from: 'o={limit:e,cursor:null,sortKey:"created_at",modelProviders:[],archived:!1,sourceKinds:im};return this.codexMcpConnection.sendRequest(uee,r,"thread/list",o),n',
-        to: 'o={limit:e,cursor:null,sortKey:"created_at",modelProviders:[],archived:!1,sourceKinds:im};let a=M0();return a.length>0&&(o={...o,cwd:a}),this.codexMcpConnection.sendRequest(uee,r,"thread/list",o),n',
+        pattern: new RegExp(`o=\\{limit:e,cursor:null,sortKey:"created_at",modelProviders:\\[\\],archived:!1,sourceKinds:(${IDENTIFIER})\\};return this\\.codexMcpConnection\\.sendRequest\\((${IDENTIFIER}),r,"thread/list",o\\),n`),
+        replace: (helperName, _match, sourceKinds, transport) => `o={limit:e,cursor:null,sortKey:"created_at",modelProviders:[],archived:!1,sourceKinds:${sourceKinds}};let a=${helperName}();return a.length>0&&(o={...o,cwd:a}),this.codexMcpConnection.sendRequest(${transport},r,"thread/list",o),n`,
     },
 ];
 
@@ -48,14 +51,18 @@ async function activate() {
     const source = fs.readFileSync(mainPath, "utf8");
     if (source.includes(MARK)) return;
 
+    const helperMatch = source.match(WORKSPACE_ROOT_HELPER_PATTERN);
+    const helperName = helperMatch ? helperMatch[1] : null;
     let patched = source;
-    const missing = [];
-    for (const patch of PATCHES) {
-        if (!patched.includes(patch.from)) {
-            missing.push(patch.name);
-            continue;
+    const missing = helperName ? [] : ["workspace root helper"];
+    if (helperName) {
+        for (const patch of PATCHES) {
+            if (!patch.pattern.test(patched)) {
+                missing.push(patch.name);
+                continue;
+            }
+            patched = patched.replace(patch.pattern, (...args) => patch.replace(helperName, ...args));
         }
-        patched = patched.replace(patch.from, patch.to);
     }
 
     if (missing.length > 0) {

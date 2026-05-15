@@ -2,8 +2,6 @@
 
 Patches the OpenAI Codex VS Code extension so `thread/list` requests are filtered by the current VS Code workspace folders.
 
-This is a smaller replacement for `codex-home-autopatch`. It does **not** change `CODEX_HOME`, split storage, or require session migration.
-
 ## Behavior
 
 - Workspace open: Recent Tasks and native session picker surfaces show sessions for the current workspace folder or folders.
