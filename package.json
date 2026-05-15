@@ -2,7 +2,7 @@
   "name": "codex-workspace-filter",
   "displayName": "Codex Workspace Filter",
   "description": "Automatically patches the OpenAI Codex VS Code extension to filter thread lists by the current VS Code workspace folders.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "xsjk",
   "license": "MIT",
   "repository": {
