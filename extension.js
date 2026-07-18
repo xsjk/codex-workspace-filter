@@ -1,8 +1,10 @@
 const vscode = require("vscode");
 const fs = require("fs");
 const path = require("path");
+const packageJson = require("./package.json");
 
-const PATCH_OWNER = "xsjk.codex-workspace-filter";
+const PATCH_OWNER = `${packageJson.publisher}.${packageJson.name}`;
+const REPORT_ISSUE_URL = `${packageJson.repository.url.replace(/\.git$/, "")}/issues/new`;
 const TARGET = "openai.chatgpt";
 const MARK = "/* codex-workspace-filter:begin */";
 const BACKUP_SUFFIX = ".codex-workspace-filter.bak";
@@ -66,7 +68,9 @@ async function activate() {
     }
 
     if (missing.length > 0) {
-        vscode.window.showWarningMessage(`Codex Workspace Filter did not patch Codex because expected patterns were missing: ${missing.join(", ")}`);
+        vscode.window.showWarningMessage(`Codex Workspace Filter did not patch Codex because expected patterns were missing: ${missing.join(", ")}`, "Report Issue").then((selection) => {
+            if (selection === "Report Issue") vscode.env.openExternal(vscode.Uri.parse(REPORT_ISSUE_URL));
+        });
         return;
     }
 
