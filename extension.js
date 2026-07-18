@@ -29,13 +29,13 @@ const PATCHES = [
     },
     {
         name: "native ChatSession provider thread/list",
-        pattern: new RegExp(`return this\\.codexAppServer\\.sendRequest\\((${IDENTIFIER}),r,"thread/list",\\{limit:50,cursor:null,sortKey:"created_at",modelProviders:e\\?\\[(${IDENTIFIER})\\]:null,archived:!1,sourceKinds:(${IDENTIFIER})\\}\\),n`),
-        replace: (helperName, _match, transport, provider, sourceKinds) => `let s=${helperName}(),a={limit:50,cursor:null,sortKey:"created_at",modelProviders:e?[${provider}]:null,archived:!1,sourceKinds:${sourceKinds}};return s.length>0&&(a={...a,cwd:s}),this.codexAppServer.sendRequest(${transport},r,"thread/list",a),n`,
+        pattern: new RegExp(`return this\\.codexAppServer\\.sendRequest\\((${IDENTIFIER}),r,"thread/list",\\{limit:50,cursor:null,sortKey:"created_at",modelProviders:e\\?\\[(${IDENTIFIER})\\]:null,archived:!1,sourceKinds:(${IDENTIFIER}),useStateDbOnly:!0\\}\\),n`),
+        replace: (helperName, _match, transport, provider, sourceKinds) => `let s=${helperName}(),a={limit:50,cursor:null,sortKey:"created_at",modelProviders:e?[${provider}]:null,archived:!1,sourceKinds:${sourceKinds},useStateDbOnly:!0};return s.length>0&&(a={...a,cwd:s}),this.codexAppServer.sendRequest(${transport},r,"thread/list",a),n`,
     },
     {
         name: "ConversationPreviewLoader thread/list",
-        pattern: new RegExp(`o=\\{limit:e,cursor:null,sortKey:"created_at",modelProviders:\\[\\],archived:!1,sourceKinds:(${IDENTIFIER})\\};return this\\.codexMcpConnection\\.sendRequest\\((${IDENTIFIER}),r,"thread/list",o\\),n`),
-        replace: (helperName, _match, sourceKinds, transport) => `o={limit:e,cursor:null,sortKey:"created_at",modelProviders:[],archived:!1,sourceKinds:${sourceKinds}};let a=${helperName}();return a.length>0&&(o={...o,cwd:a}),this.codexMcpConnection.sendRequest(${transport},r,"thread/list",o),n`,
+        pattern: new RegExp(`o=\\{limit:e,cursor:null,sortKey:"created_at",modelProviders:\\[\\],archived:!1,sourceKinds:(${IDENTIFIER}),useStateDbOnly:!0\\};return this\\.codexMcpConnection\\.sendRequest\\((${IDENTIFIER}),r,"thread/list",o\\),n`),
+        replace: (helperName, _match, sourceKinds, transport) => `o={limit:e,cursor:null,sortKey:"created_at",modelProviders:[],archived:!1,sourceKinds:${sourceKinds},useStateDbOnly:!0};let a=${helperName}();return a.length>0&&(o={...o,cwd:a}),this.codexMcpConnection.sendRequest(${transport},r,"thread/list",o),n`,
     },
 ];
 
