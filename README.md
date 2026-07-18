@@ -24,7 +24,7 @@ The injected filter uses the Codex extension's existing workspace-root helper, s
 On patch, this extension writes an exact backup next to the Codex extension entrypoint:
 
 ```text
-out/extension.js.codex-workspace-filter.bak
+out/extension.js.bak
 ```
 
 If this extension is disabled or uninstalled, the injected bootstrap restores that backup and restarts the extension host.

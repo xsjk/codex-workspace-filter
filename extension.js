@@ -7,7 +7,7 @@ const PATCH_OWNER = `${packageJson.publisher}.${packageJson.name}`;
 const REPORT_ISSUE_URL = `${packageJson.repository.url.replace(/\.git$/, "")}/issues/new`;
 const TARGET = "openai.chatgpt";
 const MARK = "/* codex-workspace-filter:begin */";
-const BACKUP_SUFFIX = ".codex-workspace-filter.bak";
+const BACKUP_SUFFIX = ".bak";
 
 const BOOTSTRAP = `${MARK}
 (() => {
