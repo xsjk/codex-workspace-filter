@@ -20,23 +20,22 @@ const BOOTSTRAP = `${MARK}
 })();
 /* codex-workspace-filter:end */`;
 
-const IDENTIFIER = "[A-Za-z_$][\\w$]*";
-const WORKSPACE_ROOT_HELPER_PATTERN = new RegExp(`function (${IDENTIFIER})\\(\\)\\{let t=${IDENTIFIER}\\.workspace\\.workspaceFolders\\?\\.filter\\([^;]+\\)\\.map\\(\\(\\{uri:r\\}\\)=>r\\.fsPath\\)\\?\\?\\[\\];return ${IDENTIFIER}\\(\\)\\?t\\.map\\(${IDENTIFIER}\\):t\\}`);
+const WORKSPACE_ROOT_HELPER_PATTERN = /function ([A-Za-z_$][\w$]*)\(\)\{let t=[A-Za-z_$][\w$]*\.workspace\.workspaceFolders\?\.filter\([^;]+\)\.map\(\(\{uri:r\}\)=>r\.fsPath\)\?\?\[\];return [A-Za-z_$][\w$]*\(\)\?t\.map\([A-Za-z_$][\w$]*\):t\}/;
 
 const PATCHES = [
     {
         name: "mcp-request thread/list bridge",
-        pattern: new RegExp(`case"mcp-request":\\{let\\{id:n,method:o,params:i\\}=r\\.request;this\\.pendingMcpRequests\\.set\\(String\\(n\\),e\\),this\\.codexMcpConnection\\.sendRequest\\((${IDENTIFIER}),String\\(n\\),o,i,r\\.retainResponse\\);break\\}`),
+        pattern: /case"mcp-request":\{let\{id:n,method:o,params:i\}=r\.request;this\.pendingMcpRequests\.set\(String\(n\),e\),this\.codexMcpConnection\.sendRequest\(([A-Za-z_$][\w$]*),String\(n\),o,i,r\.retainResponse\);break\}/,
         replace: (helperName, _match, transport) => `case"mcp-request":{let{id:n,method:o,params:i}=r.request;if(o==="thread/list"&&i&&i.cwd==null){let s=${helperName}();s.length>0&&(i={...i,cwd:s})}this.pendingMcpRequests.set(String(n),e),this.codexMcpConnection.sendRequest(${transport},String(n),o,i,r.retainResponse);break}`,
     },
     {
         name: "native ChatSession provider thread/list",
-        pattern: new RegExp(`return this\\.codexAppServer\\.sendRequest\\((${IDENTIFIER}),r,"thread/list",\\{limit:50,cursor:null,sortKey:"created_at",modelProviders:e\\?\\[(${IDENTIFIER})\\]:null,archived:!1,sourceKinds:(${IDENTIFIER}),useStateDbOnly:!0\\}\\),n`),
+        pattern: /return this\.codexAppServer\.sendRequest\(([A-Za-z_$][\w$]*),r,"thread\/list",\{limit:50,cursor:null,sortKey:"created_at",modelProviders:e\?\[([A-Za-z_$][\w$]*)\]:null,archived:!1,sourceKinds:([A-Za-z_$][\w$]*),useStateDbOnly:!0\}\),n/,
         replace: (helperName, _match, transport, provider, sourceKinds) => `let s=${helperName}(),a={limit:50,cursor:null,sortKey:"created_at",modelProviders:e?[${provider}]:null,archived:!1,sourceKinds:${sourceKinds},useStateDbOnly:!0};return s.length>0&&(a={...a,cwd:s}),this.codexAppServer.sendRequest(${transport},r,"thread/list",a),n`,
     },
     {
         name: "ConversationPreviewLoader thread/list",
-        pattern: new RegExp(`o=\\{limit:e,cursor:null,sortKey:"created_at",modelProviders:\\[\\],archived:!1,sourceKinds:(${IDENTIFIER}),useStateDbOnly:!0\\};return this\\.codexMcpConnection\\.sendRequest\\((${IDENTIFIER}),r,"thread/list",o\\),n`),
+        pattern: /o=\{limit:e,cursor:null,sortKey:"created_at",modelProviders:\[\],archived:!1,sourceKinds:([A-Za-z_$][\w$]*),useStateDbOnly:!0\};return this\.codexMcpConnection\.sendRequest\(([A-Za-z_$][\w$]*),r,"thread\/list",o\),n/,
         replace: (helperName, _match, sourceKinds, transport) => `o={limit:e,cursor:null,sortKey:"created_at",modelProviders:[],archived:!1,sourceKinds:${sourceKinds},useStateDbOnly:!0};let a=${helperName}();return a.length>0&&(o={...o,cwd:a}),this.codexMcpConnection.sendRequest(${transport},r,"thread/list",o),n`,
     },
 ];
