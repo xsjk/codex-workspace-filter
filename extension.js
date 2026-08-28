@@ -21,13 +21,13 @@ const BOOTSTRAP = `${MARK}
 /* codex-workspace-filter:end */`;
 
 const IDENTIFIER = "[A-Za-z_$][\\w$]*";
-const WORKSPACE_ROOT_HELPER_PATTERN = new RegExp(`function (${IDENTIFIER})\\(\\)\\{let t=${IDENTIFIER}\\.workspace\\.workspaceFolders\\?\\.map\\(r=>r\\.uri\\.fsPath\\)\\?\\?\\[\\];return ${IDENTIFIER}\\(\\)\\?t\\.map\\(${IDENTIFIER}\\):t\\}`);
+const WORKSPACE_ROOT_HELPER_PATTERN = new RegExp(`function (${IDENTIFIER})\\(\\)\\{let t=${IDENTIFIER}\\.workspace\\.workspaceFolders\\?\\.filter\\([^;]+\\)\\.map\\(\\(\\{uri:r\\}\\)=>r\\.fsPath\\)\\?\\?\\[\\];return ${IDENTIFIER}\\(\\)\\?t\\.map\\(${IDENTIFIER}\\):t\\}`);
 
 const PATCHES = [
     {
         name: "mcp-request thread/list bridge",
-        pattern: new RegExp(`case"mcp-request":\\{let\\{id:n,method:o,params:i\\}=r\\.request;this\\.pendingMcpRequests\\.set\\(String\\(n\\),e\\),this\\.codexMcpConnection\\.sendRequest\\((${IDENTIFIER}),String\\(n\\),o,i\\);break\\}`),
-        replace: (helperName, _match, transport) => `case"mcp-request":{let{id:n,method:o,params:i}=r.request;if(o==="thread/list"&&i&&i.cwd==null){let s=${helperName}();s.length>0&&(i={...i,cwd:s})}this.pendingMcpRequests.set(String(n),e),this.codexMcpConnection.sendRequest(${transport},String(n),o,i);break}`,
+        pattern: new RegExp(`case"mcp-request":\\{let\\{id:n,method:o,params:i\\}=r\\.request;this\\.pendingMcpRequests\\.set\\(String\\(n\\),e\\),this\\.codexMcpConnection\\.sendRequest\\((${IDENTIFIER}),String\\(n\\),o,i,r\\.retainResponse\\);break\\}`),
+        replace: (helperName, _match, transport) => `case"mcp-request":{let{id:n,method:o,params:i}=r.request;if(o==="thread/list"&&i&&i.cwd==null){let s=${helperName}();s.length>0&&(i={...i,cwd:s})}this.pendingMcpRequests.set(String(n),e),this.codexMcpConnection.sendRequest(${transport},String(n),o,i,r.retainResponse);break}`,
     },
     {
         name: "native ChatSession provider thread/list",
