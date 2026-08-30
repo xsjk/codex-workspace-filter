@@ -1,3 +1,5 @@
+
+
 # Codex Workspace Filter
 
 Patches the OpenAI Codex VS Code extension so `thread/list` requests are filtered by the current VS Code workspace folders.
@@ -34,3 +36,5 @@ If this extension is disabled or uninstalled, the injected bootstrap restores th
 Important: use only global Enable/Disable for this extension. Do not use workspace-specific Enable/Disable. The extension must run in the workspace/remote extension host, but the patch itself affects the installed OpenAI Codex extension in that extension host.
 
 The patch is reapplied after Codex extension updates overwrite `out/extension.js`.
+
+This extension requires VS Code 1.90 or later.
