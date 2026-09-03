@@ -2,87 +2,114 @@ const vscode = require("vscode");
 const fs = require("fs");
 const path = require("path");
 const packageJson = require("./package.json");
+const { isPatched, patchSource, sha256 } = require("./patcher");
+const { acquireLock, recoverInterruptedReplace, replaceFile } = require("./file-operations");
 
 const PATCH_OWNER = `${packageJson.publisher}.${packageJson.name}`;
 const REPORT_ISSUE_URL = `${packageJson.repository.url.replace(/\.git$/, "")}/issues/new`;
 const TARGET = "openai.chatgpt";
-const MARK = "/* codex-workspace-filter:begin */";
-const BACKUP_SUFFIX = ".bak";
+const BACKUP_SUFFIX = ".codex-workspace-filter.bak";
+const LEGACY_BACKUP_SUFFIX = ".bak";
 
-const BOOTSTRAP = `${MARK}
-(() => {
-    const fs = require("fs"), vscode = require("vscode");
-    if (vscode.extensions.getExtension("${PATCH_OWNER}")) return;
-    const backup = __filename + "${BACKUP_SUFFIX}";
-    if (!fs.existsSync(backup)) return;
-    fs.copyFileSync(backup, __filename);
-    vscode.commands.executeCommand("workbench.action.restartExtensionHost");
-})();
-/* codex-workspace-filter:end */`;
-
-const WORKSPACE_ROOT_HELPER_PATTERN = /function ([A-Za-z_$][\w$]*)\(\)\{let t=[A-Za-z_$][\w$]*\.workspace\.workspaceFolders\?\.filter\([^;]+\)\.map\(\(\{uri:r\}\)=>r\.fsPath\)\?\?\[\];return [A-Za-z_$][\w$]*\(\)\?t\.map\([A-Za-z_$][\w$]*\):t\}/;
-
-const PATCHES = [
-    {
-        name: "mcp-request thread/list bridge",
-        pattern: /case"mcp-request":\{let\{id:n,method:o,params:i\}=r\.request;this\.pendingMcpRequests\.set\(String\(n\),e\),this\.codexMcpConnection\.sendRequest\(([A-Za-z_$][\w$]*),String\(n\),o,i,r\.retainResponse\);break\}/,
-        replace: (helperName, _match, transport) => `case"mcp-request":{let{id:n,method:o,params:i}=r.request;if(o==="thread/list"&&i&&i.cwd==null){let s=${helperName}();s.length>0&&(i={...i,cwd:s})}this.pendingMcpRequests.set(String(n),e),this.codexMcpConnection.sendRequest(${transport},String(n),o,i,r.retainResponse);break}`,
-    },
-    {
-        name: "native ChatSession provider thread/list",
-        pattern: /return this\.codexAppServer\.sendRequest\(([A-Za-z_$][\w$]*),r,"thread\/list",\{limit:50,cursor:null,sortKey:"created_at",modelProviders:e\?\[([A-Za-z_$][\w$]*)\]:null,archived:!1,sourceKinds:([A-Za-z_$][\w$]*),useStateDbOnly:!0\}\),n/,
-        replace: (helperName, _match, transport, provider, sourceKinds) => `let s=${helperName}(),a={limit:50,cursor:null,sortKey:"created_at",modelProviders:e?[${provider}]:null,archived:!1,sourceKinds:${sourceKinds},useStateDbOnly:!0};return s.length>0&&(a={...a,cwd:s}),this.codexAppServer.sendRequest(${transport},r,"thread/list",a),n`,
-    },
-    {
-        name: "ConversationPreviewLoader thread/list",
-        pattern: /o=\{limit:e,cursor:null,sortKey:"created_at",modelProviders:\[\],archived:!1,sourceKinds:([A-Za-z_$][\w$]*),useStateDbOnly:!0\};return this\.codexMcpConnection\.sendRequest\(([A-Za-z_$][\w$]*),r,"thread\/list",o\),n/,
-        replace: (helperName, _match, sourceKinds, transport) => `o={limit:e,cursor:null,sortKey:"created_at",modelProviders:[],archived:!1,sourceKinds:${sourceKinds},useStateDbOnly:!0};let a=${helperName}();return a.length>0&&(o={...o,cwd:a}),this.codexMcpConnection.sendRequest(${transport},r,"thread/list",o),n`,
-    },
-];
-
-async function activate() {
+function targetPaths() {
     const targetExtension = vscode.extensions.getExtension(TARGET);
     if (!targetExtension) {
-        vscode.window.showWarningMessage("Codex Workspace Filter could not find the OpenAI Codex extension.");
-        return;
+        throw new Error("OpenAI Codex extension was not found in this extension host.");
     }
-
     const mainPath = path.join(targetExtension.extensionPath, "out", "extension.js");
-    const backupPath = `${mainPath}${BACKUP_SUFFIX}`;
-    const source = fs.readFileSync(mainPath, "utf8");
-    if (source.includes(MARK)) return;
-
-    const helperMatch = source.match(WORKSPACE_ROOT_HELPER_PATTERN);
-    const helperName = helperMatch ? helperMatch[1] : null;
-    let patched = source;
-    const missing = helperName ? [] : ["workspace root helper"];
-    if (helperName) {
-        for (const patch of PATCHES) {
-            if (!patch.pattern.test(patched)) {
-                missing.push(patch.name);
-                continue;
-            }
-            patched = patched.replace(patch.pattern, (...args) => patch.replace(helperName, ...args));
-        }
-    }
-
-    if (missing.length > 0) {
-        vscode.window.showWarningMessage(`Codex Workspace Filter did not patch Codex because expected patterns were missing: ${missing.join(", ")}`, "Report Issue").then((selection) => {
-            if (selection === "Report Issue") vscode.env.openExternal(vscode.Uri.parse(REPORT_ISSUE_URL));
-        });
-        return;
-    }
-
-    if (!patched.includes('"use strict";')) {
-        vscode.window.showWarningMessage('Codex Workspace Filter did not patch Codex because `"use strict";` was not found.');
-        return;
-    }
-
-    patched = patched.replace('"use strict";', `"use strict";\n\n${BOOTSTRAP}\n`);
-
-    fs.writeFileSync(backupPath, source, "utf8");
-    fs.writeFileSync(mainPath, patched, "utf8");
-    await vscode.commands.executeCommand("workbench.action.restartExtensionHost");
+    return {
+        mainPath,
+        backupPath: `${mainPath}${BACKUP_SUFFIX}`,
+        legacyBackupPath: `${mainPath}${LEGACY_BACKUP_SUFFIX}`,
+        lockPath: `${mainPath}.codex-workspace-filter.lock`,
+    };
 }
 
-module.exports = { activate };
+async function applyPatch(notify = true) {
+    const paths = targetPaths();
+    const release = acquireLock(paths.lockPath);
+    try {
+        recoverInterruptedReplace(paths.mainPath);
+        recoverInterruptedReplace(paths.backupPath);
+        const source = fs.readFileSync(paths.mainPath, "utf8");
+        const result = patchSource(source, PATCH_OWNER);
+        if (result.status === "already-patched") return false;
+        if (result.status === "incompatible") {
+            vscode.window.showWarningMessage(`Codex Workspace Filter is not compatible with this Codex build. Missing: ${result.missing.join(", ")}`, "Report Issue").then((selection) => {
+                if (selection === "Report Issue") vscode.env.openExternal(vscode.Uri.parse(REPORT_ISSUE_URL));
+            });
+            return false;
+        }
+
+        replaceFile(paths.backupPath, source);
+        if (sha256(fs.readFileSync(paths.backupPath)) !== result.originalHash) throw new Error("backup verification failed");
+        try {
+            replaceFile(paths.mainPath, result.source);
+            if (sha256(fs.readFileSync(paths.mainPath)) !== result.patchedHash) throw new Error("patched file verification failed");
+        } catch (error) {
+            replaceFile(paths.mainPath, source);
+            throw error;
+        }
+    } finally {
+        release();
+    }
+    if (notify) vscode.window.showInformationMessage("Codex chat history is now scoped to this workspace.");
+    await vscode.commands.executeCommand("workbench.action.restartExtensionHost");
+    return true;
+}
+
+async function restorePatch() {
+    const paths = targetPaths();
+    const release = acquireLock(paths.lockPath);
+    let backup;
+    let selectedBackupPath;
+    try {
+        recoverInterruptedReplace(paths.mainPath);
+        const current = fs.readFileSync(paths.mainPath, "utf8");
+        if (!isPatched(current)) {
+            vscode.window.showWarningMessage("Codex was not restored because its entrypoint is no longer our patched file (it may have updated).");
+            return false;
+        }
+        selectedBackupPath = [paths.backupPath, paths.legacyBackupPath].find((candidate) => fs.existsSync(candidate));
+        if (!selectedBackupPath) {
+            vscode.window.showWarningMessage("Codex is patched, but no recovery backup exists. Reinstall Codex to restore it safely.");
+            return false;
+        }
+        recoverInterruptedReplace(selectedBackupPath);
+        backup = fs.readFileSync(selectedBackupPath, "utf8");
+        if (isPatched(backup) || !backup.includes('"use strict";')) {
+            vscode.window.showWarningMessage("The recovery backup is invalid. Reinstall Codex to restore it safely.");
+            return false;
+        }
+        replaceFile(paths.mainPath, backup);
+        if (sha256(fs.readFileSync(paths.mainPath)) !== sha256(backup)) throw new Error("restore verification failed");
+        fs.rmSync(paths.backupPath, { force: true });
+        fs.rmSync(paths.legacyBackupPath, { force: true });
+    } finally {
+        release();
+    }
+    vscode.window.showInformationMessage(`Restored the original Codex extension (${sha256(backup).slice(0, 8)}).`);
+    await vscode.commands.executeCommand("workbench.action.restartExtensionHost");
+    return true;
+}
+
+async function activate(context) {
+    context.subscriptions.push(
+        vscode.commands.registerCommand("codexWorkspaceFilter.apply", () => applyPatch()),
+        vscode.commands.registerCommand("codexWorkspaceFilter.restore", () => restorePatch()),
+        vscode.commands.registerCommand("codexWorkspaceFilter.status", () => {
+            const paths = targetPaths();
+            recoverInterruptedReplace(paths.mainPath);
+            const patched = isPatched(fs.readFileSync(paths.mainPath, "utf8"));
+            const backedUp = fs.existsSync(paths.backupPath) || fs.existsSync(paths.legacyBackupPath);
+            vscode.window.showInformationMessage(`Codex Workspace Filter: ${patched ? "active" : "inactive"}; recovery backup: ${backedUp ? "ready" : "none"}.`);
+        }),
+    );
+    try {
+        await applyPatch(false);
+    } catch (error) {
+        vscode.window.showWarningMessage(`Codex Workspace Filter could not start: ${error.message}`);
+    }
+}
+
+module.exports = { activate, applyPatch, restorePatch };

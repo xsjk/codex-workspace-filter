@@ -24,13 +24,37 @@ The injected filter uses the Codex extension's existing workspace-root helper, s
 On patch, this extension writes an exact backup next to the Codex extension entrypoint:
 
 ```text
-out/extension.js.bak
+out/extension.js.codex-workspace-filter.bak
 ```
 
-If this extension is disabled or uninstalled, the injected bootstrap restores that backup and restarts the extension host.
+If this extension is uninstalled, the injected bootstrap restores that backup and restarts the extension host. Before disabling it, run **Codex Workspace Filter: Restore Original Codex** from the Command Palette.
 
 ## Scope
 
 Important: use only global Enable/Disable for this extension. Do not use workspace-specific Enable/Disable. The extension must run in the workspace/remote extension host, but the patch itself affects the installed OpenAI Codex extension in that extension host.
 
 The patch is reapplied after Codex extension updates overwrite `out/extension.js`.
+
+## Safety and recovery
+
+The extension first verifies every expected Codex call site, then writes and
+verifies an exact backup before replacing the bundle. Recoverable file
+transactions protect Windows installs from interrupted writes, and a lock keeps
+multiple VS Code windows from patching concurrently. If Codex changes its
+internal bundle, the operation fails closed and leaves Codex untouched.
+
+Use **Codex Workspace Filter: Apply or Repair** or **Codex Workspace Filter:
+Restore Original Codex** from the Command Palette. Restore is deliberately
+refused if a Codex update has already replaced the patched file.
+
+Use **Codex Workspace Filter: Show Status** to check both the active patch and
+its recovery backup.
+
+This is an interim compatibility patch, not an official OpenAI extension API.
+Codex updates can require new signatures.
+
+## Development
+
+Run `npm test`. The repository's Windows CI exercises the patch engine and
+recoverable file operations. To additionally compatibility-test a locally installed Codex bundle, set
+`CODEX_EXTENSION_BUNDLE` to its `out/extension.js` path before running the tests.

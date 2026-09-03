@@ -2,7 +2,7 @@
   "name": "codex-workspace-filter",
   "displayName": "Codex Workspace Filter",
   "description": "Automatically patches the OpenAI Codex VS Code extension to filter thread lists by the current VS Code workspace folders.",
-  "version": "0.0.4",
+  "version": "0.1.0",
   "publisher": "xsjk",
   "license": "MIT",
   "repository": {
@@ -12,10 +12,43 @@
   "engines": {
     "vscode": "^1.90.0"
   },
-  "categories": ["Other"],
-  "activationEvents": ["onStartupFinished"],
+  "categories": [
+    "Other"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "codexWorkspaceFilter.apply",
+        "title": "Codex Workspace Filter: Apply or Repair"
+      },
+      {
+        "command": "codexWorkspaceFilter.restore",
+        "title": "Codex Workspace Filter: Restore Original Codex"
+      },
+      {
+        "command": "codexWorkspaceFilter.status",
+        "title": "Codex Workspace Filter: Show Status"
+      }
+    ]
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./extension.js",
-  "extensionKind": ["workspace"],
-  "extensionDependencies": ["openai.chatgpt"],
-  "files": ["extension.js", "README.md", "LICENSE"]
+  "extensionKind": [
+    "workspace"
+  ],
+  "extensionDependencies": [
+    "openai.chatgpt"
+  ],
+  "files": [
+    "extension.js",
+    "patcher.js",
+    "file-operations.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test"
+  }
 }
