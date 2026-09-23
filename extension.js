@@ -25,8 +25,8 @@ const WORKSPACE_ROOT_HELPER_PATTERN = /function ([A-Za-z_$][\w$]*)\(\)\{let t=[A
 const PATCHES = [
     {
         name: "mcp-request thread/list bridge",
-        pattern: /case"mcp-request":\{let\{id:n,method:o,params:i\}=r\.request;this\.pendingMcpRequests\.set\(String\(n\),e\),this\.codexMcpConnection\.sendRequest\(([A-Za-z_$][\w$]*),String\(n\),o,i,r\.retainResponse\);break\}/,
-        replace: (helperName, _match, transport) => `case"mcp-request":{let{id:n,method:o,params:i}=r.request;if(o==="thread/list"&&i&&i.cwd==null){let s=${helperName}();s.length>0&&(i={...i,cwd:s})}this.pendingMcpRequests.set(String(n),e),this.codexMcpConnection.sendRequest(${transport},String(n),o,i,r.retainResponse);break}`,
+        pattern: /let\{id:n,method:o,params:i\}=r\.request;this\.pendingMcpRequests\.set\(String\(n\),e\),this\.codexMcpConnection\.sendRequest\(([A-Za-z_$][\w$]*),String\(n\),o,i,r\.retainResponse\);break\}/,
+        replace: (helperName, _match, transport) => `let{id:n,method:o,params:i}=r.request;if(o==="thread/list"&&i&&i.cwd==null){let s=${helperName}();s.length>0&&(i={...i,cwd:s})}this.pendingMcpRequests.set(String(n),e),this.codexMcpConnection.sendRequest(${transport},String(n),o,i,r.retainResponse);break}`,
     },
     {
         name: "native ChatSession provider thread/list",
