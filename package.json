@@ -10,7 +10,7 @@
     "url": "https://github.com/xsjk/codex-workspace-filter.git"
   },
   "engines": {
-    "vscode": "^1.90.0"
+    "vscode": "^1.96.2"
   },
   "categories": ["Other"],
   "activationEvents": ["onStartupFinished"],

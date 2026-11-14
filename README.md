@@ -2,6 +2,11 @@
 
 Patches the OpenAI Codex VS Code extension so `thread/list` requests are filtered by the current VS Code workspace folders.
 
+## Requirements
+
+- VS Code: `^1.96.2`.
+- OpenAI Codex extension (`openai.chatgpt`): `>=26.51111.21308`.
+
 ## Behavior
 
 - Workspace open: Recent Tasks and native session picker surfaces show sessions for the current workspace folder or folders.

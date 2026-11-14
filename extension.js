@@ -20,7 +20,7 @@ const BOOTSTRAP = `${MARK}
 })();
 /* codex-workspace-filter:end */`;
 
-const WORKSPACE_ROOT_HELPER_PATTERN = /function ([A-Za-z_$][\w$]*)\(\)\{let t=[A-Za-z_$][\w$]*\.workspace\.workspaceFolders\?\.filter\([^;]+\)\.map\(\(\{uri:r\}\)=>r\.fsPath\)\?\?\[\];return [A-Za-z_$][\w$]*\(\)\?t\.map\([A-Za-z_$][\w$]*\):t\}/;
+const WORKSPACE_ROOT_HELPER_PATTERN = /function ([A-Za-z_$][\w$]*)\(\)\{return [A-Za-z_$][\w$]*\.workspace\.workspaceFolders\?\.filter\([^;]+\)\.map\(\(\{uri:([A-Za-z_$][\w$]*)\}\)=>\2\.fsPath\)\?\?\[\]\}/;
 
 const PATCHES = [
     {
