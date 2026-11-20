@@ -24,19 +24,19 @@ const WORKSPACE_ROOT_HELPER_PATTERN = /function ([A-Za-z_$][\w$]*)\(\)\{return [
 
 const PATCHES = [
     {
-        name: "mcp-request thread/list bridge",
-        pattern: /(let\{id:n,method:o,params:i\}=r\.request;)(this\.pendingMcpRequests\.set\(String\(n\),[A-Za-z_$][\w$]*\),this\.codexMcpConnection\.sendRequest\([A-Za-z_$][\w$]*,String\(n\),o,i,r\.retainResponse\);break\})/,
-        replace: (helperName, _match, declaration, dispatch) => `${declaration}if(o==="thread/list"&&i&&i.cwd==null){const workspaceRoots=${helperName}();if(workspaceRoots.length>0)i={...i,cwd:workspaceRoots}}${dispatch}`,
+        name: "App Server Manager recent threads",
+        pattern: /(async function [A-Za-z_$][\w$]*\([^{}]+\{originators:[^{}]+\}\)\{)(let [A-Za-z_$][\w$]*=await [A-Za-z_$][\w$]*\(\{[^{}]+useStateDbOnly:!0)(?=\},[A-Za-z_$][\w$]*\?\{priority:"background",source:"recent_threads"\}:\{source:"recent_threads"\}\))/,
+        replace: (helperName, _match, method, request) => `${method}const workspaceRoots=${helperName}();${request},...(workspaceRoots.length>0?{cwd:workspaceRoots}:{})`,
+    },
+    {
+        name: "App Server Manager recent thread visibility",
+        pattern: /(shouldSurfaceRecentConversation\(([A-Za-z_$][\w$]*)\)\{)return(?=!this\.isConversationSuppressed\(\2\.id\)&&\2\.ephemeral!==!0)/,
+        replace: (helperName, _match, method, conversation) => `${method}const workspaceRoots=${helperName}();return (workspaceRoots.length===0||workspaceRoots.includes(${conversation}.cwd))&&`,
     },
     {
         name: "native ChatSession provider thread/list",
         pattern: /(async loadConversationItems\(([A-Za-z_$][\w$]*)\)\{)(let [A-Za-z_$][\w$]*=await this\.codexAppServer\.request\("thread\/list",\{limit:50,cursor:null,sortKey:"created_at",modelProviders:\2\?\[[A-Za-z_$][\w$]*\]:null,archived:!1,sourceKinds:[A-Za-z_$][\w$]*,useStateDbOnly:!0)\}\)/,
         replace: (helperName, _match, method, _parameter, request) => `${method}const workspaceRoots=${helperName}();${request},...(workspaceRoots.length>0?{cwd:workspaceRoots}:{})})`,
-    },
-    {
-        name: "ConversationPreviewLoader thread/list",
-        pattern: /(async fetchConversationPreviews\(\)\{)(let ([A-Za-z_$][\w$]*)=\{limit:50,cursor:null,sortKey:"created_at",modelProviders:\[\],archived:!1,sourceKinds:[A-Za-z_$][\w$]*,useStateDbOnly:!0)(\},[A-Za-z_$][\w$]*=await this\.codexMcpConnection\.request\("thread\/list",\3\))/,
-        replace: (helperName, _match, method, params, _paramsName, request) => `${method}const workspaceRoots=${helperName}();${params},...(workspaceRoots.length>0?{cwd:workspaceRoots}:{})${request}`,
     },
 ];
 
