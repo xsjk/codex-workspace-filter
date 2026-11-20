@@ -38,4 +38,4 @@ If this extension is disabled or uninstalled, the injected bootstrap restores th
 
 Important: use only global Enable/Disable for this extension. Do not use workspace-specific Enable/Disable. The extension must run in the workspace/remote extension host, but the patch itself affects the installed OpenAI Codex extension in that extension host.
 
-The patch is reapplied after Codex extension updates overwrite `out/extension.js`.
+The patch is reapplied after Codex extension updates overwrite `out/extension.js`. When this extension updates, it rebuilds its patch from the original backup.

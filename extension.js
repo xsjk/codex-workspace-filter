@@ -6,7 +6,8 @@ const packageJson = require("./package.json");
 const PATCH_OWNER = `${packageJson.publisher}.${packageJson.name}`;
 const REPORT_ISSUE_URL = `${packageJson.repository.url.replace(/\.git$/, "")}/issues/new`;
 const TARGET = "openai.chatgpt";
-const MARK = "/* codex-workspace-filter:begin */";
+const MARK_PREFIX = "/* codex-workspace-filter:begin ";
+const MARK = `${MARK_PREFIX}v${packageJson.version} */`;
 const BACKUP_SUFFIX = ".bak";
 
 const BOOTSTRAP = `${MARK}
@@ -49,21 +50,30 @@ async function activate() {
 
     const mainPath = path.join(targetExtension.extensionPath, "out", "extension.js");
     const backupPath = `${mainPath}${BACKUP_SUFFIX}`;
-    const source = fs.readFileSync(mainPath, "utf8");
-    if (source.includes(MARK)) return;
+    const installed = fs.readFileSync(mainPath, "utf8");
+    if (installed.includes(MARK)) return;
+    const alreadyPatched = installed.includes(MARK_PREFIX);
 
-    const helperMatch = source.match(WORKSPACE_ROOT_HELPER_PATTERN);
-    const helperName = helperMatch ? helperMatch[1] : null;
-    let patched = source;
-    const missing = helperName ? [] : ["workspace root helper"];
-    if (helperName) {
-        for (const patch of PATCHES) {
-            if (!patch.pattern.test(patched)) {
-                missing.push(patch.name);
-                continue;
-            }
-            patched = patched.replace(patch.pattern, (...args) => patch.replace(helperName, ...args));
+    let source = installed;
+    if (alreadyPatched) {
+        if (!fs.existsSync(backupPath)) {
+            vscode.window.showWarningMessage("Codex Workspace Filter could not update the patch because the original Codex backup is missing. Reinstall the Codex extension to restore it.");
+            return;
         }
+        source = fs.readFileSync(backupPath, "utf8");
+    }
+
+    let patched = source.replace(/^"use strict";/, (directive) => `${directive}\n\n${BOOTSTRAP}\n`);
+    const missing = patched === source ? ['"use strict";'] : [];
+    const helperName = source.match(WORKSPACE_ROOT_HELPER_PATTERN)?.[1];
+    if (helperName) {
+        for (const { name, pattern, replace } of PATCHES) {
+            const next = patched.replace(pattern, (...args) => replace(helperName, ...args));
+            if (next === patched) missing.push(name);
+            patched = next;
+        }
+    } else {
+        missing.push("workspace root helper");
     }
 
     if (missing.length > 0) {
@@ -73,14 +83,7 @@ async function activate() {
         return;
     }
 
-    if (!patched.includes('"use strict";')) {
-        vscode.window.showWarningMessage('Codex Workspace Filter did not patch Codex because `"use strict";` was not found.');
-        return;
-    }
-
-    patched = patched.replace('"use strict";', `"use strict";\n\n${BOOTSTRAP}\n`);
-
-    fs.writeFileSync(backupPath, source, "utf8");
+    if (!alreadyPatched) fs.writeFileSync(backupPath, source, "utf8");
     fs.writeFileSync(mainPath, patched, "utf8");
     await vscode.commands.executeCommand("workbench.action.restartExtensionHost");
 }
