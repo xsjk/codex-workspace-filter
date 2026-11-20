@@ -5,7 +5,7 @@ Patches the OpenAI Codex VS Code extension so `thread/list` requests are filtere
 ## Requirements
 
 - VS Code: `^1.96.2`.
-- OpenAI Codex extension (`openai.chatgpt`): `>=26.51111.21308`.
+- OpenAI Codex extension (`openai.chatgpt`): `>=26.51117.31558`.
 
 ## Behavior
 
