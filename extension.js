@@ -30,11 +30,6 @@ const PATCHES = [
         replace: (helperName, _match, method, request) => `${method}const workspaceRoots=${helperName}();${request},...(workspaceRoots.length>0?{cwd:workspaceRoots}:{})`,
     },
     {
-        name: "App Server Manager recent thread visibility",
-        pattern: /(shouldSurfaceRecentConversation\(([A-Za-z_$][\w$]*)\)\{)return(?=!this\.isConversationSuppressed\(\2\.id\)&&\2\.ephemeral!==!0)/,
-        replace: (helperName, _match, method, conversation) => `${method}const workspaceRoots=${helperName}();return (workspaceRoots.length===0||workspaceRoots.includes(${conversation}.cwd))&&`,
-    },
-    {
         name: "native ChatSession provider thread/list",
         pattern: /(async loadConversationItems\(([A-Za-z_$][\w$]*)\)\{)(let [A-Za-z_$][\w$]*=await this\.codexAppServer\.request\("thread\/list",\{limit:50,cursor:null,sortKey:"created_at",modelProviders:\2\?\[[A-Za-z_$][\w$]*\]:null,archived:!1,sourceKinds:[A-Za-z_$][\w$]*,useStateDbOnly:!0)\}\)/,
         replace: (helperName, _match, method, _parameter, request) => `${method}const workspaceRoots=${helperName}();${request},...(workspaceRoots.length>0?{cwd:workspaceRoots}:{})})`,

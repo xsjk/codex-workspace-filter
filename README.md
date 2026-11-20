@@ -18,11 +18,10 @@ Patches the OpenAI Codex VS Code extension so `thread/list` requests are filtere
 
 Codex already records `cwd` for sessions, and `thread/list` already accepts a `cwd` filter as a string or an array of strings.
 
-The workspace filter applies in three places.
+The workspace filter applies to two queries.
 
 1. App Server Manager's Recent Tasks query.
-2. Recent Tasks visibility check for cached sessions.
-3. Native VS Code ChatSession picker query.
+2. Native VS Code ChatSession picker query.
 
 The injected filter uses the Codex extension's existing workspace-root helper, so it follows the same path normalization behavior as Codex itself.
 
